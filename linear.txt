@@ -1,0 +1,101 @@
+Write a program for Linear separation
+import numpy as np
+import matplotlib.pyplot as plt
+def create_distance_function(a, b, c):
+    """ 0 = ax + by + c """
+    def distance(x, y):
+        """ returns tuple (d, pos)
+            d is the distance
+            If pos == -1 point is below the line, 
+            0 on the line and +1 if above the line
+        """
+        nom = a * x + b * y + c
+        if nom == 0:
+            pos = 0
+        elif (nom<0 and b<0) or (nom>0 and b>0):
+            pos = -1
+        else:
+            pos = 1
+        return (np.absolute(nom) / np.sqrt( a ** 2 + b ** 2), pos)
+    return distance
+points = [ (3.5, 1.8), (1.1, 3.9) ]
+fig, ax = plt.subplots()
+ax.set_xlabel("sweetness")
+ax.set_ylabel("sourness")
+ax.set_xlim([-1, 6])
+ax.set_ylim([-1, 8])
+X = np.arange(-0.5, 5, 0.1)
+colors = ["r", ""] # for the samples
+size = 10
+for (index, (x, y)) in enumerate(points):
+    if index== 0:
+        ax.plot(x, y, "o", color="darkorange", markersize=size)
+    else:
+        ax.plot(x, y, "oy", markersize=size)
+        step = 0.05
+for x in np.arange(0, 1+step, step):
+    slope = np.tan(np.arccos(x))
+    dist4line1 = create_distance_function(slope, -1, 0)
+    #print("x: ", x, "slope: ", slope)
+    Y = slope * X
+    results = []
+    for point in points:
+        results.append(dist4line1(*point))
+    #print(slope, results)
+    if (results[0][1] != results[1][1]):
+        ax.plot(X, Y, "g-")
+    else:
+        ax.plot(X, Y, "r-")
+
+plt.show()
+
+------------------------------------------------------------------
+Write a program for Hopfield network model for associative memory
+from neurodynex.hopfield_network import network, pattern_tools, plot_tools
+
+pattern_size = 5
+
+# create an instance of the class HopfieldNetwork
+hopfield_net = network.HopfieldNetwork(nr_neurons= pattern_size**2)
+# instantiate a pattern factory
+factory = pattern_tools.PatternFactory(pattern_size, pattern_size)
+# create a checkerboard pattern and add it to the pattern list
+checkerboard = factory.create_checkerboard()
+pattern_list = [checkerboard]
+
+# add random patterns to the list
+pattern_list.extend(factory.create_random_pattern_list(nr_patterns=3, on_probability=0.5))
+plot_tools.plot_pattern_list(pattern_list)
+# how similar are the random patterns and the checkerboard? Check the overlaps
+overlap_matrix = pattern_tools.compute_overlap_matrix(pattern_list)
+plot_tools.plot_overlap_matrix(overlap_matrix)
+
+# let the hopfield network "learn" the patterns. Note: they are not stored
+# explicitly but only network weights are updated !
+hopfield_net.store_patterns(pattern_list)
+
+# create a noisy version of a pattern and use that to initialize the network
+noisy_init_state = pattern_tools.flip_n(checkerboard, nr_of_flips=4)
+hopfield_net.set_state_from_pattern(noisy_init_state)
+
+# from this initial state, let the network dynamics evolve.
+states = hopfield_net.run_with_monitoring(nr_steps=4)
+
+# each network state is a vector. reshape it to the same shape used to create the patterns.
+states_as_patterns = factory.reshape_patterns(states)
+# plot the states of the network
+plot_tools.plot_state_sequence_and_overlap(states_as_patterns, pattern_list, reference_idx=0, suptitle="Network dynamics")
+"""
+def plot_overlap_matrix(overlap_matrix, color_map="bwr"):
+    heatmap = plt.imshow(overlap_matrix, cmap='coolwarm')
+    plt.imshow(overlap_matrix, interpolation="nearest", cmap=color_map)
+    plt.title("pattern overlap m(i,k)")
+    plt.xlabel("pattern k")
+    plt.ylabel("pattern i")
+    plt.axes().get_xaxis().set_major_locator(plt.MaxNLocator(integer=True))
+    plt.axes().get_yaxis().set_major_locator(plt.MaxNLocator(integer=True))
+    cb = plt.colorbar(ticks=np.arange(-1, 1.01, 0.25).tolist())
+    colorbar = plt.colorbar(heatmap)
+    colorbar.set_ticks([-1, 0, 1]) 
+    plt.show()
+"""
